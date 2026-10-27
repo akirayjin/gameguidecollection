@@ -6,9 +6,7 @@ import android.util.Log
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.io.File
-import java.io.FileOutputStream
-import java.net.HttpURLConnection
-import java.net.URL
+import java.util.regex.Matcher
 import java.util.regex.Pattern
 
 object ImageDownloader {
@@ -30,73 +28,42 @@ object ImageDownloader {
     }
 
     fun downloadImagesAndReplaceHtmlSync(htmlContent: String): String {
-        val imgPattern = Pattern.compile("<img\\s+([^>]*)\\s*src=\"([^\"]+)\"([^>]*)>", Pattern.DOTALL or Pattern.CASE_INSENSITIVE)
+        val imgPattern = Pattern.compile("<(img|image)\\s+([^>]*)\\s*src=\"([^\"]+)\"([^>]*)>", Pattern.DOTALL or Pattern.CASE_INSENSITIVE)
         val matcher = imgPattern.matcher(htmlContent)
         val sb = StringBuffer()
 
-        val picturesDir = getImagesDirectory()
-
         while (matcher.find()) {
-            val attrBefore = matcher.group(1) ?: ""
-            val srcUrl = matcher.group(2) ?: ""
-            val attrAfter = matcher.group(3) ?: ""
+            val tagName = matcher.group(1) ?: "image"
+            val attrBefore = matcher.group(2) ?: ""
+            val srcUrl = matcher.group(3) ?: ""
+            val attrAfter = matcher.group(4) ?: ""
 
-            // If it's already a local /images/ path, keep it
-            if (srcUrl.startsWith("/images/")) {
-                matcher.appendReplacement(sb, "<img $attrBefore src=\"$srcUrl\" $attrAfter>")
+            // If it's already a base64 data URI or a local /images/ path, keep it
+            if (srcUrl.startsWith("data:") || srcUrl.startsWith("/images/")) {
+                val replacement = "<$tagName $attrBefore src=\"$srcUrl\" $attrAfter>"
+                matcher.appendReplacement(sb, Matcher.quoteReplacement(replacement))
                 continue
             }
 
             if (srcUrl.startsWith("http://") || srcUrl.startsWith("https://") || srcUrl.startsWith("//")) {
                 val resolvedUrl = if (srcUrl.startsWith("//")) "https:$srcUrl" else srcUrl
                 try {
-                    val localFile = downloadAndSaveImage(resolvedUrl, picturesDir)
-                    if (localFile != null && localFile.exists()) {
-                        // Serve via HTTP local endpoint /images/... so desktop browser and consoles can load it without CORS / file:// blocks
-                        val localHttpPath = "/images/${localFile.name}"
-                        Log.d(TAG, "Downloaded image $resolvedUrl -> $localHttpPath")
-                        matcher.appendReplacement(sb, "<img $attrBefore src=\"$localHttpPath\" $attrAfter>")
+                    val base64Data = ImageUtils.urlToBase64Sync(resolvedUrl)
+                    if (base64Data != null) {
+                        Log.d(TAG, "Converted image URL to base64: $resolvedUrl")
+                        val replacement = "<$tagName $attrBefore src=\"$base64Data\" $attrAfter>"
+                        matcher.appendReplacement(sb, Matcher.quoteReplacement(replacement))
                         continue
                     }
                 } catch (e: Exception) {
-                    Log.e(TAG, "Failed to download image from $resolvedUrl", e)
+                    Log.e(TAG, "Failed to convert image URL to base64: $resolvedUrl", e)
                 }
             }
-            // Fallback: keep original src if download failed
-            matcher.appendReplacement(sb, "<img $attrBefore src=\"$srcUrl\" $attrAfter>")
+            // Fallback: keep original src if conversion failed
+            val replacement = "<$tagName $attrBefore src=\"$srcUrl\" $attrAfter>"
+            matcher.appendReplacement(sb, Matcher.quoteReplacement(replacement))
         }
         matcher.appendTail(sb)
         return sb.toString()
-    }
-
-    private fun downloadAndSaveImage(urlString: String, outputDir: File): File? {
-        return try {
-            val url = URL(urlString)
-            val connection = url.openConnection() as HttpURLConnection
-            connection.connectTimeout = 10000
-            connection.readTimeout = 10000
-            connection.instanceFollowRedirects = true
-            connection.connect()
-
-            if (connection.responseCode != HttpURLConnection.HTTP_OK) {
-                return null
-            }
-
-            val fileName = "img_${Math.abs(urlString.hashCode())}.jpg"
-            val file = File(outputDir, fileName)
-            if (file.exists() && file.length() > 0) {
-                return file
-            }
-
-            val inputStream = connection.inputStream
-            val outputStream = FileOutputStream(file)
-            inputStream.copyTo(outputStream)
-            outputStream.close()
-            inputStream.close()
-            file
-        } catch (e: Exception) {
-            Log.e(TAG, "Error downloading image: $urlString", e)
-            null
-        }
     }
 }

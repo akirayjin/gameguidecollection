@@ -286,11 +286,13 @@ class VitaHttpServer(
                         }
 
                         if (sectionId <= 0L) {
+                            val maxOrder = db.gameDao().getMaxOrderIndexForGame(validGameId) ?: 0
                             db.gameDao().insertSection(
                                 GuideSectionEntity(
                                     gameId = validGameId, 
                                     title = if (title.isBlank()) "New Section" else title, 
-                                    content = content
+                                    content = content,
+                                    orderIndex = maxOrder + 1
                                 )
                             )
                         } else {
@@ -300,11 +302,13 @@ class VitaHttpServer(
                                 val finalContent = if (content.isBlank() && existing.content.isNotBlank()) existing.content else content
                                 db.gameDao().updateSection(existing.copy(gameId = validGameId, title = finalTitle, content = finalContent))
                             } else {
+                                val maxOrder = db.gameDao().getMaxOrderIndexForGame(validGameId) ?: 0
                                 db.gameDao().insertSection(
                                     GuideSectionEntity(
                                         gameId = validGameId, 
                                         title = if (title.isBlank()) "New Section" else title, 
-                                        content = content
+                                        content = content,
+                                        orderIndex = maxOrder + 1
                                     )
                                 )
                             }

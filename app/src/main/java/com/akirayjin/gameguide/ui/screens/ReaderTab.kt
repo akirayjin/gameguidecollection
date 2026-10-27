@@ -1,9 +1,6 @@
 package com.akirayjin.gameguide.ui.screens
 
-import android.graphics.Color as AndroidColor
-import android.text.Html
-import android.text.method.LinkMovementMethod
-import android.widget.TextView
+import android.webkit.WebView
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -18,9 +15,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.ArrowDropDown
@@ -51,8 +46,6 @@ import com.akirayjin.gameguide.data.AppDatabase
 import com.akirayjin.gameguide.data.GameWithSections
 import com.akirayjin.gameguide.ui.theme.VitaBlue
 import com.akirayjin.gameguide.ui.theme.VitaGold
-import com.akirayjin.gameguide.util.ImageDownloader
-import java.io.File
 
 @Composable
 fun ReaderTab() {
@@ -227,68 +220,120 @@ fun ReaderTab() {
                 colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
                 shape = RoundedCornerShape(12.dp)
             ) {
-                Column(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .verticalScroll(rememberScrollState())
-                        .padding(16.dp)
-                ) {
-                    if (activeSection != null) {
-                        Text(
-                            text = activeSection.title,
-                            fontSize = 20.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = VitaGold
-                        )
-                        Spacer(modifier = Modifier.height(12.dp))
+                if (activeSection != null) {
+                    val isDark = MaterialTheme.colorScheme.background.red < 0.5f
+                    val bgColor = if (isDark) "#0d1117" else "#ffffff"
+                    val textColor = if (isDark) "#c9d1d9" else "#24292f"
+                    val borderColor = if (isDark) "#30363d" else "#d0d7de"
+                    val headerBg = if (isDark) "#161b22" else "#f6f8fa"
 
-                        val textColorHex = if (MaterialTheme.colorScheme.background.red > 0.5f) "#24292F" else "#C9D1D9"
-
-                        AndroidView(
-                            modifier = Modifier.fillMaxWidth(),
-                            factory = { ctx ->
-                                TextView(ctx).apply {
-                                    textSize = 15f
-                                    setTextColor(AndroidColor.parseColor(textColorHex))
-                                    setLinkTextColor(AndroidColor.parseColor("#58A6FF"))
-                                    movementMethod = LinkMovementMethod.getInstance()
-                                }
-                            },
-                            update = { textView ->
-                                textView.setTextColor(AndroidColor.parseColor(textColorHex))
-                                val htmlText = activeSection.content
-                                val spanned = Html.fromHtml(
-                                    htmlText,
-                                    Html.FROM_HTML_MODE_COMPACT,
-                                    { source ->
-                                        try {
-                                            val imageName = source?.substringAfter("/images/") ?: ""
-                                            val imgFile = File(ImageDownloader.getImagesDirectory(), imageName)
-                                            if (imgFile.exists()) {
-                                                val d = android.graphics.drawable.Drawable.createFromPath(imgFile.absolutePath)
-                                                if (d != null) {
-                                                    val intrinsicWidth = d.intrinsicWidth
-                                                    val intrinsicHeight = d.intrinsicHeight
-                                                    val targetWidth = 1000
-                                                    val targetHeight = if (intrinsicWidth > 0 && intrinsicHeight > 0) {
-                                                        (intrinsicHeight.toFloat() * (targetWidth.toFloat() / intrinsicWidth.toFloat())).toInt()
-                                                    } else {
-                                                        800
-                                                    }
-                                                    d.setBounds(0, 0, targetWidth, targetHeight)
-                                                    d
-                                                } else null
-                                            } else null
-                                        } catch (e: Exception) {
-                                            null
-                                        }
-                                    },
-                                    null
-                                )
-                                textView.text = spanned
+                    AndroidView(
+                        modifier = Modifier.fillMaxSize(),
+                        factory = { ctx ->
+                            WebView(ctx).apply {
+                                settings.javaScriptEnabled = true
+                                settings.domStorageEnabled = true
+                                settings.loadWithOverviewMode = true
+                                settings.useWideViewPort = false
+                                setBackgroundColor(android.graphics.Color.TRANSPARENT)
                             }
-                        )
-                    } else {
+                        },
+                        update = { webView ->
+                            val normalizedContent = activeSection.content
+                                .replace(Regex("<image\\s+", RegexOption.IGNORE_CASE), "<img ")
+                                .replace(Regex("</image>", RegexOption.IGNORE_CASE), "")
+
+                            val htmlData = """
+                                <!DOCTYPE html>
+                                <html>
+                                <head>
+                                    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+                                    <style>
+                                        body {
+                                            background-color: $bgColor;
+                                            color: $textColor;
+                                            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+                                            font-size: 15px;
+                                            line-height: 1.6;
+                                            margin: 0;
+                                            padding: 16px;
+                                        }
+                                        h1, h2, h3 { color: #58a6ff; margin-top: 16px; margin-bottom: 8px; }
+                                        h1 { font-size: 22px; border-bottom: 1px solid $borderColor; padding-bottom: 6px; }
+                                        h2 { font-size: 18px; }
+                                        h3 { font-size: 16px; }
+                                        .section-title {
+                                            font-size: 20px;
+                                            font-weight: bold;
+                                            color: #d4a373;
+                                            margin-top: 0;
+                                            margin-bottom: 12px;
+                                            border-bottom: 1px solid $borderColor;
+                                            padding-bottom: 8px;
+                                        }
+                                        table {
+                                            width: 100%;
+                                            border-collapse: collapse;
+                                            margin: 12px 0;
+                                            font-size: 14px;
+                                        }
+                                        th, td {
+                                            border: 1px solid $borderColor;
+                                            padding: 8px 12px;
+                                            text-align: left;
+                                        }
+                                        th {
+                                            background-color: $headerBg;
+                                            color: $textColor;
+                                            font-weight: bold;
+                                        }
+                                        img, image {
+                                            max-width: 100%;
+                                            height: auto;
+                                            border-radius: 6px;
+                                            margin: 8px 0;
+                                        }
+                                        .note-box {
+                                            background-color: ${if (isDark) "#1f2d3d" else "#ddf4ff"};
+                                            border-left: 4px solid #388bfd;
+                                            padding: 10px 14px;
+                                            border-radius: 4px;
+                                            margin: 12px 0;
+                                            color: $textColor;
+                                        }
+                                        .warning-box {
+                                            background-color: ${if (isDark) "#3d2d1f" else "#fff8c5"};
+                                            border-left: 4px solid #d29922;
+                                            padding: 10px 14px;
+                                            border-radius: 4px;
+                                            margin: 12px 0;
+                                            color: $textColor;
+                                        }
+                                        code {
+                                            background-color: ${if (isDark) "#161b22" else "#afb8c133"};
+                                            padding: 2px 6px;
+                                            border-radius: 4px;
+                                            font-family: monospace;
+                                        }
+                                    </style>
+                                </head>
+                                <body>
+                                    <div class="section-title">${escapeHtml(activeSection.title)}</div>
+                                    $normalizedContent
+                                </body>
+                                </html>
+                            """.trimIndent()
+
+                            webView.loadDataWithBaseURL("http://localhost/", htmlData, "text/html", "UTF-8", null)
+                        }
+                    )
+                } else {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(16.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
                         Text(
                             text = stringResource(R.string.no_sections_available_game),
                             color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
@@ -298,4 +343,13 @@ fun ReaderTab() {
             }
         }
     }
+}
+
+private fun escapeHtml(text: String): String {
+    return text
+        .replace("&", "&amp;")
+        .replace("<", "&lt;")
+        .replace(">", "&gt;")
+        .replace("\"", "&quot;")
+        .replace("'", "&#39;")
 }

@@ -353,8 +353,14 @@ fun MainScreen(
                 scope.launch(Dispatchers.IO) {
                     val processedContent = ImageDownloader.downloadImagesAndReplaceHtml(context, content)
                     if (sectionToEdit == null) {
+                        val maxOrder = db.gameDao().getMaxOrderIndexForGame(targetGameIdForSection!!) ?: 0
                         db.gameDao().insertSection(
-                            GuideSectionEntity(gameId = targetGameIdForSection!!, title = title, content = processedContent)
+                            GuideSectionEntity(
+                                gameId = targetGameIdForSection!!,
+                                title = title,
+                                content = processedContent,
+                                orderIndex = maxOrder + 1
+                            )
                         )
                     } else {
                         db.gameDao().updateSection(

@@ -29,6 +29,9 @@ interface GameDao {
     @Query("SELECT * FROM guide_sections WHERE id = :id LIMIT 1")
     suspend fun getSectionById(id: Long): GuideSectionEntity?
 
+    @Query("SELECT MAX(orderIndex) FROM guide_sections WHERE gameId = :gameId")
+    suspend fun getMaxOrderIndexForGame(gameId: Long): Int?
+
     @Query("SELECT count(*) FROM games")
     suspend fun getGameCount(): Int
 

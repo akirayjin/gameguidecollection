@@ -223,7 +223,7 @@ object VitaHtmlRenderer {
                 background: #21262d;
                 color: #f0f6fc;
             }
-            .content-area img {
+            .content-area img, .content-area image {
                 max-width: 100%;
                 height: auto;
                 border-radius: 6px;
@@ -787,10 +787,11 @@ object VitaHtmlRenderer {
                                     <button type="button" class="btn-action" onclick="insertTag('<i>', '</i>')">Italic</button>
                                     <button type="button" class="btn-action" onclick="insertTag('<code>', '</code>')">Code</button>
                                     <button type="button" class="btn-action" onclick="insertTag('<ul>\n  <li>', '</li>\n</ul>')">List</button>
-                                    <button type="button" class="btn-action" onclick="insertTag('<table>\n  <tr><th>Header</th></tr>\n  <tr><td>Data</td></tr>\n</table>', '')">Table</button>
+                                    <button type="button" class="btn-action" onclick="addTablePrompt()">📊 Table</button>
                                     <button type="button" class="btn-action" onclick="insertTag('<div class=\"note-box\">\n  <p>', '</p>\n</div>')">Note</button>
                                     <button type="button" class="btn-action" onclick="insertTag('<div class=\"warning-box\">\n  <p>', '</p>\n</div>')">Warning</button>
-                                    <button type="button" class="btn-action" onclick="insertTag('<img src=\"https://...\" />', '')">Image</button>
+                                    <button type="button" class="btn-action" onclick="addImagePrompt()">📷 Image</button>
+                                    <input type="file" id="webImgFile" accept="image/*" style="display:none;" onchange="handleWebImageFile(this)" />
                                 </div>
                                 <textarea name="content" class="form-control">${escapeHtml(sContent)}</textarea>
                             </div>
@@ -812,6 +813,45 @@ object VitaHtmlRenderer {
                     ta.focus();
                     ta.selectionStart = start + startTag.length;
                     ta.selectionEnd = end + startTag.length;
+                }
+                function addTablePrompt() {
+                    var cols = parseInt(prompt("Enter number of columns:", "2")) || 2;
+                    var rows = parseInt(prompt("Enter number of rows:", "3")) || 3;
+                    var html = "\n<table>\n  <thead>\n    <tr>\n";
+                    for (var c = 1; c <= cols; c++) {
+                        html += "      <th>Header " + c + "</th>\n";
+                    }
+                    html += "    </tr>\n  </thead>\n  <tbody>\n";
+                    for (var r = 1; r <= rows; r++) {
+                        html += "    <tr>\n";
+                        for (var c = 1; c <= cols; c++) {
+                            html += "      <td>Data " + r + "-" + c + "</td>\n";
+                        }
+                        html += "    </tr>\n";
+                    }
+                    html += "  </tbody>\n</table>\n";
+                    insertTag(html, '');
+                }
+                function addImagePrompt() {
+                    var choice = prompt("Add Image:\nType 1 for Local Device file\nType 2 for Image URL", "1");
+                    if (choice === "1") {
+                        document.getElementById('webImgFile').click();
+                    } else if (choice === "2") {
+                        var url = prompt("Enter Image URL (http:// or https://):", "");
+                        if (url && url.trim().length > 0) {
+                            insertTag('<image src="' + url.trim() + '" />', '');
+                        }
+                    }
+                }
+                function handleWebImageFile(input) {
+                    if (input.files && input.files[0]) {
+                        var reader = new FileReader();
+                        reader.onload = function(e) {
+                            insertTag('<image src="' + e.target.result + '" />', '');
+                            input.value = '';
+                        };
+                        reader.readAsDataURL(input.files[0]);
+                    }
                 }
                 </script>
             </body>

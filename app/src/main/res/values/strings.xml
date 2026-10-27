@@ -107,4 +107,22 @@
     <string name="exported_zip_toast">Successfully exported all guides &amp; images to ZIP!</string>
     <string name="zip_export_failed_toast">ZIP Export failed: %s</string>
     <string name="web_preview_title">Game Guide Web View Live Preview</string>
+
+    <!-- Image Insertion -->
+    <string name="insert_image_title">Insert Image</string>
+    <string name="choose_image_source_msg">Choose how you want to add an image to your guide section:</string>
+    <string name="local_device_btn">Local Device (Gallery)</string>
+    <string name="image_url_btn">Image URL</string>
+    <string name="enter_image_url_title">Enter Image URL</string>
+    <string name="image_url_label">Image URL (http:// or https://)</string>
+    <string name="processing_image_msg">Processing &amp; converting image to base64…</string>
+    <string name="failed_image_process">Failed to process selected image.</string>
+    <string name="failed_image_url">Failed to download/process image from URL.</string>
+
+    <!-- Table Insertion -->
+    <string name="insert_table_title">Insert Table</string>
+    <string name="columns_label">Columns</string>
+    <string name="rows_label">Rows</string>
+    <string name="include_header_row">Include Header Row</string>
+    <string name="insert_btn">Insert</string>
 </resources>
